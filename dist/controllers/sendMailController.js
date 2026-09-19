@@ -7,20 +7,29 @@ const nodemailer_1 = __importDefault(require("nodemailer"));
 const logger_1 = __importDefault(require("../utils/logger"));
 class SendMailController {
     constructor() {
-        this.transporter = nodemailer_1.default.createTransport({
-            service: 'gmail',
-            secure: true,
-            auth: {
-                user: process.env.GMAIL_USER,
-                pass: process.env.GMAIL_PASS,
-            },
-            pool: true,
-        });
+        const host = process.env.EMAIL_HOST || process.env.SMTP_HOST;
+        const user = (process.env.EMAIL_USER || process.env.GMAIL_USER || process.env.SMTP_USER);
+        const pass = (process.env.EMAIL_PASS || process.env.GMAIL_PASS || process.env.SMTP_PASS);
+        if (host && !host.includes('gmail.com')) {
+            this.transporter = nodemailer_1.default.createTransport({
+                host: host,
+                port: parseInt(process.env.EMAIL_PORT || '587', 10),
+                secure: process.env.EMAIL_PORT === '465',
+                auth: { user, pass },
+            });
+        }
+        else {
+            this.transporter = nodemailer_1.default.createTransport({
+                service: 'gmail',
+                auth: { user, pass },
+            });
+        }
     }
     async sendMail(email, otp, organization, subject) {
         try {
+            const sender = (process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@instrument.app');
             const mailOptions = {
-                from: `"${organization}" <${process.env.GMAIL_USER}>`,
+                from: `"${organization}" <${sender}>`,
                 to: email,
                 subject: subject,
                 text: `Your OTP is ${otp}`,

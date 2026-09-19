@@ -5,21 +5,30 @@ class SendMailController {
   private transporter: Transporter;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      service: 'gmail',
-      secure: true,
-      auth: {
-        user: process.env.GMAIL_USER as string,
-        pass: process.env.GMAIL_PASS as string,
-      },
-      pool: true,
-    });
+    const host = process.env.EMAIL_HOST || process.env.SMTP_HOST;
+    const user = (process.env.EMAIL_USER || process.env.GMAIL_USER || process.env.SMTP_USER) as string;
+    const pass = (process.env.EMAIL_PASS || process.env.GMAIL_PASS || process.env.SMTP_PASS) as string;
+
+    if (host && !host.includes('gmail.com')) {
+      this.transporter = nodemailer.createTransport({
+        host: host,
+        port: parseInt(process.env.EMAIL_PORT || '587', 10),
+        secure: process.env.EMAIL_PORT === '465',
+        auth: { user, pass },
+      });
+    } else {
+      this.transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+      });
+    }
   }
 
   async sendMail(email: string, otp: string, organization: string, subject: string): Promise<void> {
     try {
+      const sender = (process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@instrument.app') as string;
       const mailOptions = {
-        from: `"${organization}" <${process.env.GMAIL_USER}>`,
+        from: `"${organization}" <${sender}>`,
         to: email,
         subject: subject,
         text: `Your OTP is ${otp}`,
